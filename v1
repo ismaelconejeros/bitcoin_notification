@@ -1,0 +1,85 @@
+import requests
+import json
+import pyttsx3
+import time
+from datetime import datetime
+import pandas as pd
+
+class moneda:
+    def __init__(self, n, p, a):
+        self.nombre = n
+        self.valor = p
+        self.valor_anterior = a
+
+    def precio_actual(self):
+        print('Anterior era:', self.valor_anterior)
+        print('Actual es:' ,self.valor)
+        print()
+        return self.valor, self.valor
+    
+    def nuevo_precio(self,valor_new):
+        self.valor_anterior = self.valor
+        self.valor = valor_new
+
+    def variacion_hablado(self):
+        if self.valor == self.valor_anterior:
+            print(f'El valor de {self.nombre} se mantiene en: {self.valor} dólares')
+        elif self.valor_anterior == 0:
+            print(f'El valor de {self.nombre} es: {self.valor} dólares')
+            engine = pyttsx3.init()
+            engine.say(f'El valor de {self.nombre} es: {self.valor:.0f} dólares')
+            engine.runAndWait()
+        elif self.valor > self.valor_anterior:
+            print(f'El valor de {self.nombre} subió a: {self.valor} dólares')
+            engine = pyttsx3.init()
+            engine.say(f'El valor de {self.nombre} subió a: {self.valor:.0f} dólares')
+            engine.runAndWait()
+        else:
+            print(f'El valor de {self.nombre} bajó a: {self.valor} dólares')
+            engine = pyttsx3.init()
+            engine.say(f'El valor de {self.nombre} bajó a: {self.valor:.0f} dólares')
+            engine.runAndWait()
+
+preciobtc_coindesk = float(0)
+now = datetime.now()
+horabtc = []
+logbtc = []
+
+def actualizar_btc_coindesk():
+    global preciobtc_coindesk
+    global now
+    now = datetime.now()
+    MyRequest = requests.get('https://api.coindesk.com/v1/bpi/currentprice/USD.json')
+    json_body = MyRequest.json()
+    btcusd = json_body['bpi']
+    arreglo = json.dumps(json.dumps(btcusd, indent=4, sort_keys=True))
+    preciobtc_coindesk = float(arreglo[160:len(arreglo)-11])
+    return preciobtc_coindesk
+
+def actualizar_todo():
+    actualizar_btc_coindesk()
+
+def pausa():
+    count = 3
+    while count != 0:
+        time.sleep(1)
+        count -= 1
+
+def log_btc(a,b):
+    global horabtc
+    global logbtc
+    horabtc = [a]
+    logbtc = [b]
+    data = pd.DataFrame({'Hora': horabtc, 'Valor_BTC': logbtc})
+    data.to_csv('btc_log.csv', mode = 'a', header = None)
+
+btc = moneda('bitcoin', preciobtc_coindesk, 0)
+
+while True:
+    actualizar_todo()
+
+    btc.nuevo_precio(preciobtc_coindesk)
+    btc.variacion_hablado()
+    log_btc(now, btc.valor)
+
+    pausa()
